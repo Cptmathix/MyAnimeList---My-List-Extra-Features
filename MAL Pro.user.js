@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         MAL Extra
-// @version      1.0.4
+// @version      1.0.5
 // @description  Show anime info in your animelist
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
