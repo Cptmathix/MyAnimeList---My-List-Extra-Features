@@ -1,10 +1,11 @@
 // ==UserScript==
-// @name         MAL Pro
-// @version      1.0.1
-// @description  My Anime List Extra Features
+// @name         MAL Extra
+// @version      1.0.4
+// @description  Show anime info in your animelist
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
 // @grant        none
+// @namespace https://greasyfork.org/users/16080
 // ==/UserScript==
 
 var table = document.getElementById("list_surround").children;
@@ -59,6 +60,8 @@ function getAnimeInfo(animetitle, animeid) {
                 return entry[k];
             }
         }
+    } else {
+        return false;
     }
 }
 
@@ -106,6 +109,9 @@ function displayTable(animetitle, animeid, tdtype) {
                 var entry1 = getAnimeInfo(animetitle, animeid);
                 // var entry2 = getUserInfo(animetitle, animeid);
                 var entry2 = false;
+                if (entry1 == false) {
+                    table.innerHTML = "There seems to be an error... Sorry <br> I know that some animetitles do not work and will try to fix this in the future <br> Broken titles: Gintama, Kingdom, Tokyo Ghoul, Tokyo Ghoul √A, Shiki"
+                }
                 table.innerHTML = displayAnimeInfo(entry1, entry2);;
             }
         }, "json");
