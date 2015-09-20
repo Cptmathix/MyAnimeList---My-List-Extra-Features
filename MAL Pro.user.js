@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         MAL Extra
-// @version      1.0.5
+// @version      1.0.6
 // @description  Show anime info in your animelist
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
@@ -111,11 +111,11 @@ function displayTable(animetitle, animeid, tdtype) {
                 var entry2 = false;
                 if (entry1 == "200") {
                     table.innerHTML = "There seems to be an error... Sorry <br> I know that some animetitles do not work and will try to fix this in the future <br> Broken titles: Gintama, Kingdom, Tokyo Ghoul, Tokyo Ghoul √A, Shiki"
-                }
-                if (entry1 == "401") {
+                } else if (entry1 == "401") {
                     table.innerHTML = "Your login is wrong, please check if your username and password are correct in the script-code <br> If it worked before, I probably updated the script and you need to re-enter your login in the script"
+                } else {
+                    table.innerHTML = displayAnimeInfo(entry1, entry2);
                 }
-                table.innerHTML = displayAnimeInfo(entry1, entry2);;
             }
         }, "json");
     };
