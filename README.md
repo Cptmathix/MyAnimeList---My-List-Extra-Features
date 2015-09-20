@@ -16,7 +16,7 @@ It Uses the "More" button to display the Anime information.
 ![alt tag](https://cloud.githubusercontent.com/assets/10130747/9981278/80dfa9a0-5fb9-11e5-823f-e5f477a651d7.png)
 
 
-You can use [GreaseMonkey](https://addons.mozilla.org/nl/firefox/addon/greasemonkey/) for Firefox or [TamperMonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) for Chrome.
+You can use [GreaseMonkey](https://addons.mozilla.org/nl/firefox/addon/greasemonkey/) for Firefox or [TamperMonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) for Chrome to install this script.
 
 Make a new script, copy paste the MAL_Pro.js in the script and enjoy!
 
