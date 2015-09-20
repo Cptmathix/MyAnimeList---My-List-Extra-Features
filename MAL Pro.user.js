@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         MAL Pro
-// @version      1.0.0
+// @version      1.0.1
 // @description  My Anime List Extra Features
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
@@ -11,12 +11,11 @@ var table = document.getElementById("list_surround").children;
 for (var i = 0; i < table.length; i++) {
     var cell = table[i].getElementsByTagName('td');
     
-    for (var j = 0; j < cell.length; j++) {
-        
+    for (var j = 0; j < cell.length; j++) {  
         // Displays Anime Info
         var hasMore = cell[j].innerHTML.search('More');
         if (hasMore != -1) {
-            var animetitlelist = cell[j].getElementsByClassName('animetitle');
+            var animetitle = cell[j].getElementsByClassName('animetitle')[0].innerText;
             
             // get animeid
             var a = cell[j].getElementsByTagName("a");
@@ -27,7 +26,7 @@ for (var i = 0; i < table.length; i++) {
             
             // replace onclick function with my own
             a[1].removeAttribute('onclick');
-            a[1].addEventListener('click', getAnimeInfo(animetitlelist, animeid, tdtype) , true); 
+            a[1].addEventListener('click', displayTable(animetitle, animeid, tdtype) , true); 
         }
         
         // Not Yet Aired becomes transparant
@@ -39,75 +38,116 @@ for (var i = 0; i < table.length; i++) {
     }
 }
 
-function getAnimeInfo(animetitlelist, animeid, tdtype) {
-    return function () {
-        // your login
-        var username = " ";
-        var password = " ";
-        
-        // API request
-        var animetitle = animetitlelist[0].innerText;
-        var anime = animetitle.replace(/ /g, "_");
-        var xhr = new XMLHttpRequest();
-        var url = "http://" + username + ":" + password + "@myanimelist.net/api/anime/search.xml?q=" + anime;
-        xhr.open("GET", url, false);
-        xhr.setRequestHeader('Content-Type', 'text/xml');
-        xhr.send();
-        xmlDocument = xhr.responseXML;
-        if (xmlDocument != null) {
-            var entry = xmlDocument.getElementsByTagName('entry');
-            var entryid = xmlDocument.getElementsByTagName('id');
-            for(var k = 0; k < entryid.length; k++) {
-                if (entryid[k].textContent == animeid) {
-                    displayTable(animeid, entry[k], tdtype);
-                }
+function getAnimeInfo(animetitle, animeid) {
+    // your login
+    var username = " ";
+    var password = " ";
+
+    // API request
+    var anime = animetitle.replace(/ /g, "_");
+    var xhr = new XMLHttpRequest();
+    var url = "http://" + username + ":" + password + "@myanimelist.net/api/anime/search.xml?q=" + anime;
+    xhr.open("GET", url, false);
+    xhr.setRequestHeader('Content-Type', 'text/xml');
+    xhr.send();
+    xmlDocument = xhr.responseXML;
+    if (xmlDocument != null) {
+        var entry = xmlDocument.getElementsByTagName('entry');
+        var entryid = xmlDocument.getElementsByTagName('id');    
+        for(var k = 0; k < entryid.length; k++) {
+            if (entryid[k].textContent == animeid) {
+                return entry[k];
             }
         }
+    }
+}
+
+// This info is not being used as of now
+/*
+function getUserInfo(animetitle, animeid) {
+    // your login
+    var username = " ";
+    
+    // API request
+    var anime = animetitle.replace(/ /g, "_");
+    var xhr = new XMLHttpRequest();
+    var url = "http://myanimelist.net/malappinfo.php?u=" + username + "&status=all&type=anime";
+    xhr.open("GET", url, false);
+    xhr.setRequestHeader('Content-Type', 'text/xml');
+    xhr.send();
+    xmlDocument = xhr.responseXML;
+    return xmlDocument;
+}
+*/
+
+// if this fails to function, look at getExpand(arg1, arg2) function on the myanimelist page
+function displayTable(animetitle, animeid, tdtype) {
+    return function () {
+        var moreObject = $('#more'+animeid);
+        var memberId = $('#listUserId').val();
+
+        if (moreObject.css('display') == 'block') {		// Hide if loaded
+            moreObject.hide();
+            return false;
+        } 
+
+        if (moreObject.css('display') == 'none') {		// Show if date is already loaded
+            moreObject.show();
+        }
+
+        $.post("/includes/ajax-no-auth.inc.php?t=6", {color:tdtype,id:animeid,memId:memberId,type:$('#listType').val()}, function(data) {
+            moreObject.html(data.html).show();
+            load_img_tags();
+
+            // change info with info from API request
+            var hiddendiv = "more" + animeid;
+            var table = document.getElementById(hiddendiv).getElementsByClassName('td' + tdtype + ' borderRBL')[0]
+            if (table != null) {
+                var entry1 = getAnimeInfo(animetitle, animeid);
+                // var entry2 = getUserInfo(animetitle, animeid);
+                var entry2 = false;
+                table.innerHTML = displayAnimeInfo(entry1, entry2);;
+            }
+        }, "json");
     };
 }
 
-// if this fails to function, look at getExpand(arg1, arg2) function on the myanimelist page
-function displayTable(animeid, entry, tdtype) {
-    var moreObject = $('#more'+animeid);
-    var memberId = $('#listUserId').val();
-    
-    if (moreObject.css('display') == 'block') {		// Hide if loaded
-		moreObject.hide();
-        return false;
-	} 
-
-	if (moreObject.css('display') == 'none') {		// Show if date is already loaded
-		moreObject.show();
-	}
-    
-    $.post("/includes/ajax-no-auth.inc.php?t=6", {color:tdtype,id:animeid,memId:memberId,type:$('#listType').val()}, function(data) {
-		moreObject.html(data.html).show();
-        load_img_tags();
-        var hiddenbox = "more" + animeid;
-        var table = document.getElementById(hiddenbox).getElementsByClassName('td' + tdtype + ' borderRBL')[0]
-        if (table != null) {
-            table.innerHTML = displayAnimeInfo(entry);;
-        }
-	}, "json");
-}
-
-function displayAnimeInfo(entry) {
-    var englishTitle = "English: " + entry.getElementsByTagName('english')[0].textContent;
+function displayAnimeInfo(entry1, entry2) {
+    var englishTitle = "English: " + entry1.getElementsByTagName('english')[0].textContent;
     if (englishTitle == "English: ") {
-        englishTitle = "English: " + entry.getElementsByTagName('title')[0].textContent;
+        englishTitle = "English: " + entry1.getElementsByTagName('title')[0].textContent;
     }
-    var episodes = "Episodes: " + entry.getElementsByTagName('episodes')[0].textContent;
-    var score = "Score: " + entry.getElementsByTagName('score')[0].textContent;
-    var synopsis = entry.getElementsByTagName('synopsis')[0].textContent;
-    var image = entry.getElementsByTagName('image')[0].textContent;
+    
+    var synonyms = "Synonyms: " + entry1.getElementsByTagName('synonyms')[0].textContent;
+    var episodes = "Episodes: " + entry1.getElementsByTagName('episodes')[0].textContent;
+    if (episodes == "Episodes: 0") {
+        episodes = "Episodes: unknown";                
+    }
+    
+    var score = "Score: " + entry1.getElementsByTagName('score')[0].textContent;
+    var startDate = "Start Date: " + entry1.getElementsByTagName('start_date')[0].textContent.replace(/\d\d\d\d-\d\d-\d\d/g, function(s) {    
+        var dmy = s.split('-');    
+        return dmy[2] + '/' + dmy[1] + '/' + dmy[0];    
+    });
+    
+    var endDate = "End Date: " + entry1.getElementsByTagName('end_date')[0].textContent.replace(/\d\d\d\d-\d\d-\d\d/g, function(s) {    
+        var dmy = s.split('-');    
+        return dmy[2] + '/' + dmy[1] + '/' + dmy[0];    
+    });
+    if (endDate == "End Date: 00/00/0000") {
+        endDate = "End Date: unknown";
+    }
+    
+    var status = "Status: " + entry1.getElementsByTagName('status')[0].textContent;
+    var synopsis = entry1.getElementsByTagName('synopsis')[0].textContent;
+    var image = entry1.getElementsByTagName('image')[0].textContent;
     
     var strVar="";
     strVar += "<body>";
-    strVar += "";
     strVar += "<table>";
     strVar += "  <tr>";
     strVar += "    <td>" + "<img src=" + image + ">" + "<\/td>";
-    strVar += "    <td valign=\"top\">" + englishTitle + "<br>" + episodes + "<br>" + score + "<br>" + "<br>" + synopsis + "<\/td>";
+    strVar += "    <td valign=\"top\">" + englishTitle + "<br>" + synonyms + "<br>" + status + "<br>" + episodes + "<br>" + score + "<br>" + startDate + "<br>" + endDate + "<br>" + "<br>" + synopsis + "<\/td>";
     strVar += "  <\/tr>";
     strVar += "<\/table>";
     strVar += "<\/body>";
