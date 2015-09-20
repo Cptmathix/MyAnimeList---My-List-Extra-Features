@@ -61,7 +61,7 @@ function getAnimeInfo(animetitle, animeid) {
             }
         }
     } else {
-        return false;
+        return xhr.status;
     }
 }
 
@@ -109,8 +109,11 @@ function displayTable(animetitle, animeid, tdtype) {
                 var entry1 = getAnimeInfo(animetitle, animeid);
                 // var entry2 = getUserInfo(animetitle, animeid);
                 var entry2 = false;
-                if (entry1 == false) {
+                if (entry1 == "200") {
                     table.innerHTML = "There seems to be an error... Sorry <br> I know that some animetitles do not work and will try to fix this in the future <br> Broken titles: Gintama, Kingdom, Tokyo Ghoul, Tokyo Ghoul √A, Shiki"
+                }
+                if (entry1 == "401") {
+                    table.innerHTML = "Your login is wrong, please check if your username and password are correct in the script-code <br> If it worked before, I probably updated the script and you need to re-enter your login in the script"
                 }
                 table.innerHTML = displayAnimeInfo(entry1, entry2);;
             }
