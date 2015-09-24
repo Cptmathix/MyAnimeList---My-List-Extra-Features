@@ -4,6 +4,7 @@
 // @description  Show anime info in your animelist
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
+// @license      GPL version 2 or any later version; http://www.gnu.org/licenses/gpl-2.0.txt
 // @grant        none
 // @namespace https://greasyfork.org/users/16080
 // ==/UserScript==

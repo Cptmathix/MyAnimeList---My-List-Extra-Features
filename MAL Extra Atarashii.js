@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name         MAL Extra v2
-// @version      1.0.0
+// @version      1.0.2
 // @description  Show anime info in your animelist (uses Atarashii API)
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
+// @license      GPL version 2 or any later version; http://www.gnu.org/licenses/gpl-2.0.txt
 // @grant        none
+// @namespace https://greasyfork.org/users/16080
 // ==/UserScript==
 
 init();
@@ -111,7 +113,7 @@ function getEntryTag(data, string) {
     if (place == -1) 
         return "N/A";
     if (string == "english")
-        return data[place + 2].replace(',','');
+        return data[place + 2].replace(/,|\\/g,'');
     if (string == "synopsis") {
         var k = 1;
         var str = "";
@@ -126,12 +128,12 @@ function getEntryTag(data, string) {
         }
         return str;
     }
-    return data[place + 1].replace(',','');
+    return data[place + 1].replace(/,|\\/g,'');
 }
 
 function displayAnimeInfo(data) {
     var englishTitle = getEntryTag(data, 'english');
-    if (englishTitle == "") {
+    if (englishTitle == "N/A") {
         englishTitle = getEntryTag(data, 'title');
     }
     
