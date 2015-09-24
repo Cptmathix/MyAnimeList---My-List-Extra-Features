@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         MAL Extra v2
-// @version      1.0.2
+// @version      1.1.1
 // @description  Show anime info in your animelist (uses Atarashii API)
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
@@ -52,15 +52,13 @@ function requestCrossDomain( site, callback ) {
         return false;
     }
      
-    // Take the provided url, and add it to a YQL query. Make sure you encode it!
+    // Take the provided url, and add it to a YQL query.
     var yql = 'http://query.yahooapis.com/v1/public/yql?q=' + encodeURIComponent('select * from html where url="' + site + '"') + '&format=xml&callback=?';
      
     // Request that YSQL string, and run a callback function.
-    // Pass a defined function to prevent cache-busting.
     $.getJSON( yql, function(data) { 
         if ( data.results[0] ) {
-            // Strip out all script tags, for security reasons.
-            // BE VERY CAREFUL. This helps, but we should do more. 
+            // Strip out all script tags, for security reasons. 
             data = data.results[0].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
 
             // If the user passed a callback, and it
@@ -98,9 +96,12 @@ function displayTable(animetitle, animeid, tdtype) {
             var table = document.getElementById(hiddendiv).getElementsByClassName('td' + tdtype + ' borderRBL')[0];
             if (table != null) {
                 var url = "api.atarashiiapp.com/2/anime/" + animeid;
+                // get anime info from the Atarashi API
                 requestCrossDomain(url, function(results) {
-                    results = results.replace(/":"|":/g,'"');
-                    results = results.split('"');
+                    // remove html tags
+                    results = results.replace(/\<body\>|\<\/body\>|\<\/em\>/g, "");
+                    // parse results into readable format
+                    results = JSON.parse(results);
                     table.innerHTML = displayAnimeInfo(results);
                 }); 
             }
@@ -109,35 +110,17 @@ function displayTable(animetitle, animeid, tdtype) {
 }
 
 function getEntryTag(data, string) {
-    var place = data.indexOf(string);
-    if (place == -1) 
-        return "N/A";
-    if (string == "english")
-        return data[place + 2].replace(/,|\\/g,'');
-    if (string == "synopsis") {
-        var k = 1;
-        var str = "";
-        while (data[place + k] != ",") {
-            var x = data[place + k].replace(/\\r|\\n/g,'');
-            var r = /\\u([\d\w]{4})/gi;
-            x = x.replace(r, function (match, grp) {
-                return String.fromCharCode(parseInt(grp, 16)); } );
-            x = unescape(x);
-            str += x.replace(/&lt;\\\/em&gt;/g, "</em>").replace(/\\/g, '');
-            k++;
-        }
-        return str;
-    }
-    return data[place + 1].replace(/,|\\/g,'');
+    return data[string];
 }
 
 function displayAnimeInfo(data) {
     var englishTitle = getEntryTag(data, 'english');
-    if (englishTitle == "N/A") {
+    if (englishTitle == null) {
         englishTitle = getEntryTag(data, 'title');
     }
     
     var rank = getEntryTag(data, 'rank');
+    var popularity = getEntryTag(data, 'popularity_rank');
     var episodes = getEntryTag(data, 'episodes');
     if (episodes == "0") {
         episodes = "unknown";                
@@ -158,23 +141,29 @@ function displayAnimeInfo(data) {
     }
     
     var status = getEntryTag(data, 'status');
-    var synopsis = getEntryTag(data, 'synopsis').replace(/\[i\]/g,"<i>").replace(/\[\/i\]/g,"</i>");
+    status = status.charAt(0).toUpperCase() + status.slice(1);
+    var synopsis = getEntryTag(data, 'synopsis').replace(/&lt;\/em&gt;/g, "</em>");
     var image = getEntryTag(data, 'image_url');
+    var genres = getEntryTag(data, 'genres');
     
     var strVar="";
     strVar += "<body>";
     strVar += "<table>";
     strVar += "  <tr>";
-    strVar += "    <td>" + "<img src=" + image + ">" + "<\/td>";
-    strVar += "    <td valign=\"top\">";
-    strVar += "    <b>" + "English:  " + "<\/b>" + englishTitle + "<br>";
+    strVar += "    <td rowspan=\"2\">" + "<img src=" + image + ">" + "<\/td>";
+    strVar += "    <td valign=\"top\">" 
+    strVar += "    <b>" + "English:  " + "<\/b>" + englishTitle + "<br>"
     strVar += "    <b>" + "Status:   " + "<\/b>" + status + "<br>";
     strVar += "    <b>" + "Episodes: " + "<\/b>" + episodes + "<br>";
     strVar += "    <b>" + "Score:    " + "<\/b>" + score + "<br>";
-    strVar += "    <b>" + "Rank: " + "<\/b>" + rank + "<br>" + "<br>";
-    strVar += "    <b>" + "Start-date: " + "<\/b>" + startDate + "<br>";
-    strVar += "    <b>" + "End-date:   " + "<\/b>" + endDate + "<br>" + "<br>" + synopsis;
+    strVar += "    <b>" + "Rank: " + "<\/b>" + rank + "<br>";
+    strVar += "    <b>" + "Popularity: " + "<\/b>" + popularity + "<br>";
+    strVar += "    <b>" + "Aired: " + "<\/b>" + startDate + " to " + endDate + "<br>";
     strVar += "    <\/td>";
+    strVar += "    <td valign=\"top\" align=\"right\">" + genres + "<\/td>";   
+    strVar += "  <\/tr>";
+    strVar += "  <tr>";
+    strVar += "    <td valign=\"top\" colspan=\"2\">" + synopsis + "<\/td>";
     strVar += "  <\/tr>";
     strVar += "<\/table>";
     strVar += "<\/body>";
