@@ -9,8 +9,8 @@
 // ==/UserScript==
 
 // Your MyAnimeList Login
-var username = " ";
-var password = " ";
+var username = "";
+var password = "";
 
 init();
 
@@ -158,7 +158,7 @@ function displayAnimeInfo(entry1, entry2) {
     }
     
     var status = getEntryTag(entry1, 'status');
-    var synopsis = getEntryTag(entry1, 'synopsis');
+    var synopsis = getEntryTag(entry1, 'synopsis').replace(/\[i\]/g,"<i>").replace(/\[\/i\]/g,"</i>");
     var image = getEntryTag(entry1, 'image');
     
     var strVar="";
