@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         MAL Extra v2
-// @version      1.1.1
+// @version      1.1.2
 // @description  Show anime info in your animelist (uses Atarashii API)
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
@@ -46,12 +46,6 @@ function init() {
 
 function requestCrossDomain( site, callback ) {
      
-    // If no url was passed, exit.
-    if ( !site ) {
-        alert('No site was passed.');
-        return false;
-    }
-     
     // Take the provided url, and add it to a YQL query.
     var yql = 'http://query.yahooapis.com/v1/public/yql?q=' + encodeURIComponent('select * from html where url="' + site + '"') + '&format=xml&callback=?';
      
@@ -66,9 +60,9 @@ function requestCrossDomain( site, callback ) {
             if ( typeof callback === 'function') {
                 callback(data);
             }
+        } else {
+            alert("Atarashii API is down");
         }
-        // Else, Maybe we requested a site that doesn't exist, and nothing returned.
-        else throw new Error('Nothing returned from getJSON.');
     });    
 }
 
@@ -103,7 +97,7 @@ function displayTable(animetitle, animeid, tdtype) {
                     // parse results into readable format
                     results = JSON.parse(results);
                     table.innerHTML = displayAnimeInfo(results);
-                }); 
+                });
             }
         }, "json");
     };
