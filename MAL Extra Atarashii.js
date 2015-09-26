@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         MAL Extra v2
-// @version      1.1.2
-// @description  Show anime info in your animelist (uses Atarashii API)
+// @name         MyAnimeList(MAL) - Extra v2
+// @version      1.1.8
+// @description  Show anime info in your animelist
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
 // @license      GPL version 2 or any later version; http://www.gnu.org/licenses/gpl-2.0.txt
@@ -61,7 +61,7 @@ function requestCrossDomain( site, callback ) {
                 callback(data);
             }
         } else {
-            alert("Atarashii API is down");
+            alert("Atarashii API returned an error");
         }
     });    
 }
@@ -89,11 +89,12 @@ function displayTable(animetitle, animeid, tdtype) {
             var hiddendiv = "more" + animeid;
             var table = document.getElementById(hiddendiv).getElementsByClassName('td' + tdtype + ' borderRBL')[0];
             if (table != null) {
+                table.innerHTML = "Fetching data from Atarashii API"
                 var url = "api.atarashiiapp.com/2/anime/" + animeid;
                 // get anime info from the Atarashi API
                 requestCrossDomain(url, function(results) {
                     // remove html tags
-                    results = results.replace(/\<body\>|\<\/body\>|\<\/em\>/g, "");
+                    results = results.replace(/\<body\>|\<\/.*\>/g, "");
                     // parse results into readable format
                     results = JSON.parse(results);
                     table.innerHTML = displayAnimeInfo(results);
@@ -104,23 +105,35 @@ function displayTable(animetitle, animeid, tdtype) {
 }
 
 function getEntryTag(data, string) {
-    return data[string];
+    var results = data[string];
+    if (results == null)
+        return "N/A"
+    return results;
 }
 
 function displayAnimeInfo(data) {
     var englishTitle = getEntryTag(data, 'english');
-    if (englishTitle == null) {
+    if (englishTitle == "N/A") {
         englishTitle = getEntryTag(data, 'title');
     }
     
     var rank = getEntryTag(data, 'rank');
+    if (rank == "0") {
+        rank = "N/A";                
+    }
     var popularity = getEntryTag(data, 'popularity_rank');
+    if (popularity == "0") {
+        popularity = "N/A";                
+    }
     var episodes = getEntryTag(data, 'episodes');
     if (episodes == "0") {
-        episodes = "unknown";                
+        episodes = "Unknown";                
+    }
+    var score = getEntryTag(data, 'members_score');
+        if (score == "0") {
+        score = "N/A";                
     }
     
-    var score = getEntryTag(data, 'members_score');
     var startDate = getEntryTag(data, 'start_date').replace(/\d\d\d\d-\d\d-\d\d/g, function(s) {    
         var dmy = s.split('-');    
         return dmy[2] + '/' + dmy[1] + '/' + dmy[0];    
@@ -128,15 +141,18 @@ function displayAnimeInfo(data) {
     
     var endDate = getEntryTag(data, 'end_date').replace(/\d\d\d\d-\d\d-\d\d/g, function(s) {    
         var dmy = s.split('-');    
-        return dmy[2] + '/' + dmy[1] + '/' + dmy[0];    
+        return " " + "to " + dmy[2] + '/' + dmy[1] + '/' + dmy[0];    
     });
-    if (endDate == "00/00/0000") {
-        endDate = "unknown";
+    if (endDate == "N/A" && episodes == "1") {
+        endDate = "";
+    } else if (endDate == "N/A") {
+        endDate = " " + "to N/A";
     }
+         
     
     var status = getEntryTag(data, 'status');
     status = status.charAt(0).toUpperCase() + status.slice(1);
-    var synopsis = getEntryTag(data, 'synopsis').replace(/&lt;\/em&gt;/g, "</em>");
+    var synopsis = getEntryTag(data, 'synopsis').replace(/&lt;/g,"<").replace(/&gt;/g, ">");
     var image = getEntryTag(data, 'image_url');
     var genres = getEntryTag(data, 'genres');
     
@@ -152,12 +168,12 @@ function displayAnimeInfo(data) {
     strVar += "    <b>" + "Score:    " + "<\/b>" + score + "<br>";
     strVar += "    <b>" + "Rank: " + "<\/b>" + rank + "<br>";
     strVar += "    <b>" + "Popularity: " + "<\/b>" + popularity + "<br>";
-    strVar += "    <b>" + "Aired: " + "<\/b>" + startDate + " to " + endDate + "<br>";
+    strVar += "    <b>" + "Aired: " + "<\/b>" + startDate + endDate + "<br>";
     strVar += "    <\/td>";
     strVar += "    <td valign=\"top\" align=\"right\">" + genres + "<\/td>";   
     strVar += "  <\/tr>";
     strVar += "  <tr>";
-    strVar += "    <td valign=\"top\" colspan=\"2\">" + synopsis + "<\/td>";
+    strVar += "    <td valign=\"top\" colspan=\"2\" width=\"100%\" height=\"100%\">" + "<br>" + synopsis + "<\/td>";
     strVar += "  <\/tr>";
     strVar += "<\/table>";
     strVar += "<\/body>";
