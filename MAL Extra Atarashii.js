@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         MyAnimeList(MAL) - Extra v2
-// @version      1.1.8
+// @version      1.1.10
 // @description  Show anime info in your animelist
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
@@ -77,13 +77,14 @@ function displayTable(animetitle, animeid, tdtype) {
             return false;
         } 
 
-        if (moreObject.css('display') == 'none') {		// Show if date is already loaded
+        if (moreObject.children().length != 0) {		// Show if data is already loaded
             moreObject.show();
+            return false;
         }
 
+        
         $.post("/includes/ajax-no-auth.inc.php?t=6", {color:tdtype,id:animeid,memId:memberId,type:$('#listType').val()}, function(data) {
             moreObject.html(data.html).show();
-            load_img_tags();
 
             // change info with info from Atarashii API
             var hiddendiv = "more" + animeid;
@@ -154,14 +155,18 @@ function displayAnimeInfo(data) {
     status = status.charAt(0).toUpperCase() + status.slice(1);
     var synopsis = getEntryTag(data, 'synopsis').replace(/&lt;/g,"<").replace(/&gt;/g, ">");
     var image = getEntryTag(data, 'image_url');
+    
     var genres = getEntryTag(data, 'genres');
+    for	(i = 1; i < genres.length; i++) {
+        genres[i] = " " + genres[i];
+    }
     
     var strVar="";
     strVar += "<body>";
     strVar += "<table>";
     strVar += "  <tr>";
     strVar += "    <td rowspan=\"2\">" + "<img src=" + image + ">" + "<\/td>";
-    strVar += "    <td valign=\"top\">" 
+    strVar += "    <td valign=\"top\" width=\"50%\">" 
     strVar += "    <b>" + "English:  " + "<\/b>" + englishTitle + "<br>"
     strVar += "    <b>" + "Status:   " + "<\/b>" + status + "<br>";
     strVar += "    <b>" + "Episodes: " + "<\/b>" + episodes + "<br>";
@@ -170,7 +175,7 @@ function displayAnimeInfo(data) {
     strVar += "    <b>" + "Popularity: " + "<\/b>" + popularity + "<br>";
     strVar += "    <b>" + "Aired: " + "<\/b>" + startDate + endDate + "<br>";
     strVar += "    <\/td>";
-    strVar += "    <td valign=\"top\" align=\"right\">" + genres + "<\/td>";   
+    strVar += "    <td valign=\"top\" align=\"right\" width=\"50%\">" + genres + "<\/td>";   
     strVar += "  <\/tr>";
     strVar += "  <tr>";
     strVar += "    <td valign=\"top\" colspan=\"2\" width=\"100%\" height=\"100%\">" + "<br>" + synopsis + "<\/td>";
