@@ -1,17 +1,25 @@
 // ==UserScript==
 // @name         MyAnimeList(MAL) - Extra v2
-// @version      1.1.10
-// @description  Show anime info in your animelist
+// @version      2.0.0
+// @description  Show anime/manga info in your animelist/mangalist
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
+// @match        *://myanimelist.net/mangalist/*
 // @license      GPL version 2 or any later version; http://www.gnu.org/licenses/gpl-2.0.txt
 // @grant        none
 // @namespace https://greasyfork.org/users/16080
 // ==/UserScript==
 
-init();
+var type = "";
+if(window.location.href.indexOf("mangalist") > -1) {
+    type = "manga";
+} else {
+    type = "anime";
+}
 
-function init() {
+init(type);
+
+function init(type) {
     var table = document.getElementById("list_surround").children;
     for (var i = 0; i < table.length; i++) {
         var cell = table[i].getElementsByTagName('td');
@@ -20,18 +28,16 @@ function init() {
             // Displays Anime Info
             var hasMore = cell[j].innerHTML.search('More');
             if (hasMore != -1) {
-                var animetitle = cell[j].getElementsByClassName('animetitle')[0].innerText;
-
-                // get animeid
+                // get titleid
                 var a = cell[j].getElementsByTagName("a");
-                var animeid = a[1].id.match(/\d/g).join("");
+                var titleid = a[1].getAttribute('onclick').match(/\d.*,/g).join("").replace(',',"");
 
                 // get table color type
                 var tdtype = cell[j].className.match(/\d/g).join("");
 
                 // replace onclick function with my own
                 a[1].removeAttribute('onclick');
-                a[1].addEventListener('click', displayTable(animetitle, animeid, tdtype) , true); 
+                a[1].addEventListener('click', displayTable(titleid, tdtype, type) , true); 
             }
 
             // Not Yet Aired becomes transparant
@@ -67,9 +73,9 @@ function requestCrossDomain( site, callback ) {
 }
 
 // if this fails to function, look at getExpand(arg1, arg2) function on the myanimelist page
-function displayTable(animetitle, animeid, tdtype) {
+function displayTable(titleid, tdtype, type) {
     return function () {
-        var moreObject = $('#more'+animeid);
+        var moreObject = $('#more'+titleid);
         var memberId = $('#listUserId').val();
 
         if (moreObject.css('display') == 'block') {		// Hide if loaded
@@ -81,24 +87,23 @@ function displayTable(animetitle, animeid, tdtype) {
             moreObject.show();
             return false;
         }
-
         
-        $.post("/includes/ajax-no-auth.inc.php?t=6", {color:tdtype,id:animeid,memId:memberId,type:$('#listType').val()}, function(data) {
+        $.post("/includes/ajax-no-auth.inc.php?t=6", {color:tdtype,id:titleid,memId:memberId,type:$('#listType').val()}, function(data) {
             moreObject.html(data.html).show();
 
             // change info with info from Atarashii API
-            var hiddendiv = "more" + animeid;
+            var hiddendiv = "more" + titleid;
             var table = document.getElementById(hiddendiv).getElementsByClassName('td' + tdtype + ' borderRBL')[0];
             if (table != null) {
                 table.innerHTML = "Fetching data from Atarashii API"
-                var url = "api.atarashiiapp.com/2/anime/" + animeid;
-                // get anime info from the Atarashi API
+                var url = "api.atarashiiapp.com/2/" + type + "/" + titleid;
+                // get anime/manga info from the Atarashi API
                 requestCrossDomain(url, function(results) {
                     // remove html tags
                     results = results.replace(/\<body\>|\<\/.*\>/g, "");
                     // parse results into readable format
                     results = JSON.parse(results);
-                    table.innerHTML = displayAnimeInfo(results);
+                    table.innerHTML = displayInfo(results, type);
                 });
             }
         }, "json");
@@ -108,14 +113,19 @@ function displayTable(animetitle, animeid, tdtype) {
 function getEntryTag(data, string) {
     var results = data[string];
     if (results == null)
-        return "N/A"
-    return results;
+        return "N/A";
+    return results;  
 }
 
-function displayAnimeInfo(data) {
-    var englishTitle = getEntryTag(data, 'english');
-    if (englishTitle == "N/A") {
-        englishTitle = getEntryTag(data, 'title');
+function displayInfo(data, type) {
+    var englishTitle = (getEntryTag(data, 'other_titles'))['english'];
+    if (englishTitle == null) {
+        englishTitle = (getEntryTag(data, 'other_titles'))['synonyms'];
+        if (englishTitle != null) {
+            englishTitle = englishTitle[0];
+        } else {
+            englishTitle = getEntryTag(data, 'title');
+        }
     }
     
     var rank = getEntryTag(data, 'rank');
@@ -126,12 +136,12 @@ function displayAnimeInfo(data) {
     if (popularity == "0") {
         popularity = "N/A";                
     }
-    var episodes = getEntryTag(data, 'episodes');
+    var episodes = getEntryTag(data, type == "anime" ? 'episodes' : 'chapters');
     if (episodes == "0") {
         episodes = "Unknown";                
     }
     var score = getEntryTag(data, 'members_score');
-        if (score == "0") {
+    if (score == "0") {
         score = "N/A";                
     }
     
@@ -148,8 +158,7 @@ function displayAnimeInfo(data) {
         endDate = "";
     } else if (endDate == "N/A") {
         endDate = " " + "to N/A";
-    }
-         
+    }        
     
     var status = getEntryTag(data, 'status');
     status = status.charAt(0).toUpperCase() + status.slice(1);
@@ -169,11 +178,11 @@ function displayAnimeInfo(data) {
     strVar += "    <td valign=\"top\" width=\"50%\">" 
     strVar += "    <b>" + "English:  " + "<\/b>" + englishTitle + "<br>"
     strVar += "    <b>" + "Status:   " + "<\/b>" + status + "<br>";
-    strVar += "    <b>" + "Episodes: " + "<\/b>" + episodes + "<br>";
+    strVar += "    <b>" + (type == "anime" ? "Episodes: " : "Chapters: ") + "<\/b>" + episodes + "<br>";
     strVar += "    <b>" + "Score:    " + "<\/b>" + score + "<br>";
     strVar += "    <b>" + "Rank: " + "<\/b>" + rank + "<br>";
     strVar += "    <b>" + "Popularity: " + "<\/b>" + popularity + "<br>";
-    strVar += "    <b>" + "Aired: " + "<\/b>" + startDate + endDate + "<br>";
+    type == "anime" ? (strVar += "    <b>" + "Aired: " + "<\/b>" + startDate + endDate + "<br>") : "";
     strVar += "    <\/td>";
     strVar += "    <td valign=\"top\" align=\"right\" width=\"50%\">" + genres + "<\/td>";   
     strVar += "  <\/tr>";
