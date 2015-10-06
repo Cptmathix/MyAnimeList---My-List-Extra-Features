@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         MyAnimeList(MAL) - Extra v2
-// @version      2.0.0
+// @version      2.0.2
 // @description  Show anime/manga info in your animelist/mangalist
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
@@ -100,7 +100,7 @@ function displayTable(titleid, tdtype, type) {
                 // get anime/manga info from the Atarashi API
                 requestCrossDomain(url, function(results) {
                     // remove html tags
-                    results = results.replace(/\<body\>|\<\/.*\>/g, "");
+                    results = results.replace(/\<body\>|\<\/.*\>/g, "").replace(/\<span.*\>/g,'');
                     // parse results into readable format
                     results = JSON.parse(results);
                     table.innerHTML = displayInfo(results, type);
@@ -174,7 +174,7 @@ function displayInfo(data, type) {
     strVar += "<body>";
     strVar += "<table>";
     strVar += "  <tr>";
-    strVar += "    <td rowspan=\"2\">" + "<img src=" + image + ">" + "<\/td>";
+    strVar += "    <td valign=\"top\" rowspan=\"2\">" + "<img src=" + image + ">" + "<\/td>";
     strVar += "    <td valign=\"top\" width=\"50%\">" 
     strVar += "    <b>" + "English:  " + "<\/b>" + englishTitle + "<br>"
     strVar += "    <b>" + "Status:   " + "<\/b>" + status + "<br>";
