@@ -16,6 +16,15 @@ It Uses the "More" button to display the Anime information.
 ![alt tag](https://cloud.githubusercontent.com/assets/10130747/9981278/80dfa9a0-5fb9-11e5-823f-e5f477a651d7.png)
 
 
+-----------------------------------------------------------------------------------------------------------------------------
+<b>Examples with Atarashii userscript:</b>
+
+
+![alt tag](https://cloud.githubusercontent.com/assets/10130747/10302423/7bdb6700-6c0c-11e5-81e9-648816d6e78d.jpg)
+
+![alt tag](https://cloud.githubusercontent.com/assets/10130747/10302426/7ed5f826-6c0c-11e5-8742-1923f9d98e86.jpg)
+
+
 You can use [GreaseMonkey](https://addons.mozilla.org/nl/firefox/addon/greasemonkey/) for Firefox or [TamperMonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) for Chrome to install this script.
 
 [Install Script from Greasyfork](https://greasyfork.org/nl/scripts/12560-mal-extra) (uses MAL API and needs MAL login)
