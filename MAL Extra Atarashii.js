@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         MyAnimeList(MAL) - Extra v2
-// @version      2.0.2
+// @version      2.1.0
 // @description  Show anime/manga info in your animelist/mangalist
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
@@ -10,14 +10,11 @@
 // @namespace https://greasyfork.org/users/16080
 // ==/UserScript==
 
-var type = "";
 if(window.location.href.indexOf("mangalist") > -1) {
-    type = "manga";
+    init("manga");
 } else {
-    type = "anime";
+    init("anime");
 }
-
-init(type);
 
 function init(type) {
     var table = document.getElementById("list_surround").children;
@@ -28,6 +25,9 @@ function init(type) {
             // Displays Anime Info
             var hasMore = cell[j].innerHTML.search('More');
             if (hasMore != -1) {
+                // get anime title
+                var animeTitle = cell[j].getElementsByClassName('animetitle')[0].innerText.replace(/ /g,"-");
+                
                 // get titleid
                 var a = cell[j].getElementsByTagName("a");
                 var titleid = a[1].getAttribute('onclick').match(/\d.*,/g).join("").replace(',',"");
@@ -37,7 +37,7 @@ function init(type) {
 
                 // replace onclick function with my own
                 a[1].removeAttribute('onclick');
-                a[1].addEventListener('click', displayTable(titleid, tdtype, type) , true); 
+                a[1].addEventListener('click', displayTable(animeTitle, titleid, tdtype, type) , true); 
             }
 
             // Not Yet Aired becomes transparant
@@ -73,7 +73,7 @@ function requestCrossDomain( site, callback ) {
 }
 
 // if this fails to function, look at getExpand(arg1, arg2) function on the myanimelist page
-function displayTable(titleid, tdtype, type) {
+function displayTable(title, titleid, tdtype, type) {
     return function () {
         var moreObject = $('#more'+titleid);
         var memberId = $('#listUserId').val();
@@ -90,12 +90,19 @@ function displayTable(titleid, tdtype, type) {
         
         $.post("/includes/ajax-no-auth.inc.php?t=6", {color:tdtype,id:titleid,memId:memberId,type:$('#listType').val()}, function(data) {
             moreObject.html(data.html).show();
+            
 
             // change info with info from Atarashii API
             var hiddendiv = "more" + titleid;
             var table = document.getElementById(hiddendiv).getElementsByClassName('td' + tdtype + ' borderRBL')[0];
             if (table != null) {
-                table.innerHTML = "Fetching data from Atarashii API"
+                
+                var preHTML = table.innerHTML;
+                var start = preHTML.indexOf('Time Spent Watching');
+                var end = preHTML.indexOf('<small>(');
+                var timeSpentWatching = preHTML.substring(start + 21, end);
+                
+                table.innerHTML = "Fetching data from Atarashii API";
                 var url = "api.atarashiiapp.com/2/" + type + "/" + titleid;
                 // get anime/manga info from the Atarashi API
                 requestCrossDomain(url, function(results) {
@@ -103,7 +110,7 @@ function displayTable(titleid, tdtype, type) {
                     results = results.replace(/\<body\>|\<\/.*\>/g, "").replace(/\<span.*\>/g,'');
                     // parse results into readable format
                     results = JSON.parse(results);
-                    table.innerHTML = displayInfo(results, type);
+                    table.innerHTML = displayInfo(title, results, type, timeSpentWatching);
                 });
             }
         }, "json");
@@ -117,7 +124,7 @@ function getEntryTag(data, string) {
     return results;  
 }
 
-function displayInfo(data, type) {
+function displayInfo(title, data, type, timeSpentWatching) {
     var englishTitle = (getEntryTag(data, 'other_titles'))['english'];
     if (englishTitle == null) {
         englishTitle = (getEntryTag(data, 'other_titles'))['synonyms'];
@@ -174,20 +181,23 @@ function displayInfo(data, type) {
     strVar += "<body>";
     strVar += "<table>";
     strVar += "  <tr>";
-    strVar += "    <td valign=\"top\" rowspan=\"2\">" + "<img src=" + image + ">" + "<\/td>";
-    strVar += "    <td valign=\"top\" width=\"50%\">" 
-    strVar += "    <b>" + "English:  " + "<\/b>" + englishTitle + "<br>"
+    strVar += "    <td valign=\"top\" rowspan=\"3\">" + "<img src=" + image + ">" + "<\/td>";
+    strVar += "    <td valign=\"top\" width=\"50%\">";
+    strVar += "    <b>" + "English:  " + "<\/b>" + englishTitle + "<br>";
     strVar += "    <b>" + "Status:   " + "<\/b>" + status + "<br>";
     strVar += "    <b>" + (type == "anime" ? "Episodes: " : "Chapters: ") + "<\/b>" + episodes + "<br>";
     strVar += "    <b>" + "Score:    " + "<\/b>" + score + "<br>";
     strVar += "    <b>" + "Rank: " + "<\/b>" + rank + "<br>";
     strVar += "    <b>" + "Popularity: " + "<\/b>" + popularity + "<br>";
-    type == "anime" ? (strVar += "    <b>" + "Aired: " + "<\/b>" + startDate + endDate + "<br>") : "";
+    type == "anime" ? (strVar += "<b>" + "Aired: " + "<\/b>" + startDate + endDate + "<br>") : "";
     strVar += "    <\/td>";
     strVar += "    <td valign=\"top\" align=\"right\" width=\"50%\">" + genres + "<\/td>";   
     strVar += "  <\/tr>";
     strVar += "  <tr>";
     strVar += "    <td valign=\"top\" colspan=\"2\" width=\"100%\" height=\"100%\">" + "<br>" + synopsis + "<\/td>";
+    strVar += "  <\/tr>";
+    strVar += "  <tr>";
+    strVar += "    <td valign=\"bottom\" align=\"right\" colspan=\"2\">" + "<br>" + "<small>" + "<b>" + "Time Spent Watching: " + "<\/b>"+ timeSpentWatching + "<\/small>" + "<\/td>";
     strVar += "  <\/tr>";
     strVar += "<\/table>";
     strVar += "<\/body>";
