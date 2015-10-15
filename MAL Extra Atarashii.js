@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         MyAnimeList(MAL) - Extra v2
-// @version      2.1.0
+// @version      2.2.0
 // @description  Show anime/manga info in your animelist/mangalist
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
@@ -50,7 +50,7 @@ function init(type) {
     }
 }
 
-function requestCrossDomain( site, callback ) {
+function requestCrossDomain(site, callback) {
      
     // Take the provided url, and add it to a YQL query.
     var yql = 'http://query.yahooapis.com/v1/public/yql?q=' + encodeURIComponent('select * from html where url="' + site + '"') + '&format=xml&callback=?';
@@ -61,8 +61,6 @@ function requestCrossDomain( site, callback ) {
             // Strip out all script tags, for security reasons. 
             data = data.results[0].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
 
-            // If the user passed a callback, and it
-            // is a function, call it, and send through the data var.
             if ( typeof callback === 'function') {
                 callback(data);
             }
@@ -88,36 +86,37 @@ function displayTable(title, titleid, tdtype, type) {
             return false;
         }
         
+        // get information if not loaded
         $.post("/includes/ajax-no-auth.inc.php?t=6", {color:tdtype,id:titleid,memId:memberId,type:$('#listType').val()}, function(data) {
             moreObject.html(data.html).show();
-            
 
             // change info with info from Atarashii API
             var hiddendiv = "more" + titleid;
             var table = document.getElementById(hiddendiv).getElementsByClassName('td' + tdtype + ' borderRBL')[0];
+            
             if (table != null) {
-                
-                var preHTML = table.innerHTML;
-                var start = preHTML.indexOf('Time Spent Watching');
-                var end = preHTML.indexOf('<small>(');
-                var timeSpentWatching = preHTML.substring(start + 21, end);
-                
+                if (type == "anime")
+                    var timeSpentWatching = getPreMoreData(table.innerHTML);             
                 table.innerHTML = "Fetching data from Atarashii API";
                 var url = "api.atarashiiapp.com/2/" + type + "/" + titleid;
-                // get anime/manga info from the Atarashi API
-                requestCrossDomain(url, function(results) {
-                    // remove html tags
-                    results = results.replace(/\<body\>|\<\/.*\>/g, "").replace(/\<span.*\>/g,'');
-                    // parse results into readable format
-                    results = JSON.parse(results);
-                    table.innerHTML = displayInfo(title, results, type, timeSpentWatching);
+                requestCrossDomain(url, function(results) {                                          // get anime/manga info from the Atarashi API
+                    results = results.replace(/\<body\>|\<\/.*\>/g, "").replace(/\<span.*\>/g,'');   // remove html tags
+                    results = JSON.parse(results);                                                   // parse results into readable format
+                    table.innerHTML = displayInfo(title, results, type, timeSpentWatching);          // call display information function
                 });
             }
         }, "json");
     };
 }
 
-function getEntryTag(data, string) {
+function getPreMoreData(preData) {
+    var start = preData.indexOf('Time Spent Watching');
+    var end = preData.indexOf('<small>(');
+    return preData.substring(start + 21, end);
+}
+
+
+function getValue(data, string) {
     var results = data[string];
     if (results == null)
         return "N/A";
@@ -125,39 +124,39 @@ function getEntryTag(data, string) {
 }
 
 function displayInfo(title, data, type, timeSpentWatching) {
-    var englishTitle = (getEntryTag(data, 'other_titles'))['english'];
+    var englishTitle = (getValue(data, 'other_titles'))['english'];
     if (englishTitle == null) {
-        englishTitle = (getEntryTag(data, 'other_titles'))['synonyms'];
+        englishTitle = (getValue(data, 'other_titles'))['synonyms'];
         if (englishTitle != null) {
             englishTitle = englishTitle[0];
         } else {
-            englishTitle = getEntryTag(data, 'title');
+            englishTitle = getValue(data, 'title');
         }
     }
     
-    var rank = getEntryTag(data, 'rank');
+    var rank = getValue(data, 'rank');
     if (rank == "0") {
         rank = "N/A";                
     }
-    var popularity = getEntryTag(data, 'popularity_rank');
+    var popularity = getValue(data, 'popularity_rank');
     if (popularity == "0") {
         popularity = "N/A";                
     }
-    var episodes = getEntryTag(data, type == "anime" ? 'episodes' : 'chapters');
+    var episodes = getValue(data, type == "anime" ? 'episodes' : 'chapters');
     if (episodes == "0") {
         episodes = "Unknown";                
     }
-    var score = getEntryTag(data, 'members_score');
+    var score = getValue(data, 'members_score');
     if (score == "0") {
         score = "N/A";                
     }
     
-    var startDate = getEntryTag(data, 'start_date').replace(/\d\d\d\d-\d\d-\d\d/g, function(s) {    
+    var startDate = getValue(data, 'start_date').replace(/\d\d\d\d-\d\d-\d\d/g, function(s) {    
         var dmy = s.split('-');    
         return dmy[2] + '/' + dmy[1] + '/' + dmy[0];    
     });
     
-    var endDate = getEntryTag(data, 'end_date').replace(/\d\d\d\d-\d\d-\d\d/g, function(s) {    
+    var endDate = getValue(data, 'end_date').replace(/\d\d\d\d-\d\d-\d\d/g, function(s) {    
         var dmy = s.split('-');    
         return " " + "to " + dmy[2] + '/' + dmy[1] + '/' + dmy[0];    
     });
@@ -167,21 +166,42 @@ function displayInfo(title, data, type, timeSpentWatching) {
         endDate = " " + "to N/A";
     }        
     
-    var status = getEntryTag(data, 'status');
+    var status = getValue(data, 'status');
     status = status.charAt(0).toUpperCase() + status.slice(1);
-    var synopsis = getEntryTag(data, 'synopsis').replace(/&lt;/g,"<").replace(/&gt;/g, ">");
-    var image = getEntryTag(data, 'image_url');
+    var synopsis = getValue(data, 'synopsis').replace(/&lt;/g,"<").replace(/&gt;/g, ">");
+    var image = getValue(data, 'image_url');
     
-    var genres = getEntryTag(data, 'genres');
+    var genres = getValue(data, 'genres');
     for	(i = 1; i < genres.length; i++) {
         genres[i] = " " + genres[i];
+    }
+    
+    var prequel = getValue(data, 'prequels');
+    console.log(prequel);
+    if (prequel.length != 0) {
+        prequel = JSON.parse(JSON.stringify(prequel[0]));
+        var prequelTitle = prequel['title'];
+        var prequelUrl = prequel['url'];
+    } else {
+        var prequelTitle = "";
+    }
+    
+    var sequel = getValue(data, 'sequels');
+    console.log(sequel);
+    if (sequel.length != 0) {
+        console.log(sequel[0]);
+        sequel = JSON.parse(JSON.stringify(sequel[0]));
+        var sequelTitle = sequel['title'];
+        var sequelUrl = sequel['url'];
+    } else {
+        var sequelTitle = "";
     }
     
     var strVar="";
     strVar += "<body>";
     strVar += "<table>";
     strVar += "  <tr>";
-    strVar += "    <td valign=\"top\" rowspan=\"3\">" + "<img src=" + image + ">" + "<\/td>";
+    strVar += "    <td valign=\"top\" rowspan=\"4\">" + "<img src=" + image + ">" + "<\/td>";
     strVar += "    <td valign=\"top\" width=\"50%\">";
     strVar += "    <b>" + "English:  " + "<\/b>" + englishTitle + "<br>";
     strVar += "    <b>" + "Status:   " + "<\/b>" + status + "<br>";
@@ -197,7 +217,11 @@ function displayInfo(title, data, type, timeSpentWatching) {
     strVar += "    <td valign=\"top\" colspan=\"2\" width=\"100%\" height=\"100%\">" + "<br>" + synopsis + "<\/td>";
     strVar += "  <\/tr>";
     strVar += "  <tr>";
-    strVar += "    <td valign=\"bottom\" align=\"right\" colspan=\"2\">" + "<br>" + "<small>" + "<b>" + "Time Spent Watching: " + "<\/b>"+ timeSpentWatching + "<\/small>" + "<\/td>";
+    strVar += "    <td valign=\"bottom\" align=\"left\" height=\"5px\">";
+    type == "anime" && prequelTitle != "" ? (strVar += "<small>" + "<b>" + "Prequel: " + "<\/b>" + "<a href=\"" + prequelUrl + "\">" + prequelTitle + "<\/a>" + "<\/small>") : "";
+    type == "anime" && sequelTitle != "" ? (strVar += "<br>" + "<small>" + "<b>" + "Sequel: " + "<\/b>" + "<a href=\"" + sequelUrl + "\">" + sequelTitle + "<\/a>" + "<\/small>") : "";
+    strVar += "    <\/td>";
+    type == "anime" ? (strVar += "<td valign=\"bottom\" align=\"right\" colspan=\"2\">" + "<br>" + "<small>" + "<b>" + "Time Spent Watching: " + "<\/b>" + timeSpentWatching + "<\/small>" + "<\/td>") : "";
     strVar += "  <\/tr>";
     strVar += "<\/table>";
     strVar += "<\/body>";
