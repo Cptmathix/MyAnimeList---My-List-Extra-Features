@@ -19,6 +19,3 @@ You can use [GreaseMonkey](https://addons.mozilla.org/nl/firefox/addon/greasemon
 
 [Install Script from Greasyfork](https://greasyfork.org/nl/scripts/12560-mal-extra) (uses MAL API and needs MAL login)
 
-
-[Install Script from Greasyfork](https://greasyfork.org/nl/scripts/12635-mal-extra-v2) (uses Atarashii API and doesn't need a login)
-
