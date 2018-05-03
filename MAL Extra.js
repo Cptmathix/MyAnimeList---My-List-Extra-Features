@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         MyAnimeList(MAL) - Extra
-// @version      5.0.4
+// @version      5.0.6
 // @description  Show anime/manga info inside your animelist/mangalist
 // @author       Cpt_mathix
 // @match        *://myanimelist.net/animelist/*
@@ -14,11 +14,11 @@
 		var map = {};
 
 		return {
-			set: function (name, value) {
-				map[name] = value;
+			set: function (key, value) {
+				map[key] = value;
 			},
-			get: function (name) {
-				return map[name];
+			get: function (key) {
+				return map[key];
 			}
 		};
 	})();
@@ -43,9 +43,9 @@
 		}
 
 		mal.modern = $('.header .header-menu .btn-menu > .username').length > 0;
-		console.log(mal.modern);
 
 		if (mal.modern) {
+			initGlobalScrollListener();
 			initModernList();
 		} else {
 			initOldList();
@@ -61,12 +61,18 @@
 			var moreObject = $("#more" + id);
 
 			$(moreEl).removeAttr('onclick');
+			$(moreEl).attr("href", "javascript:;");
 			$(moreEl).on('click', displayTable(id, tdtype, moreObject, memberId));
 		});
 	}
 
 	function initModernList() {
 		$('#list-container > div.list-block > div > table > tbody[class=list-item] > tr.list-table-data > td.data.title').each( function() {
+			if ($(this).attr('id') === 'list-extra') {
+				return true;
+			} else {
+				$(this).attr('id', 'list-extra');
+			}
 			var id = $(this).find('> a').attr('href').match(/\/(\d+)\//)[1];
 			var moreEl = $(this).find('> div > span.more > a');
 			var memberId = $('body')[0].dataset.ownerId;
@@ -75,7 +81,21 @@
 			var el = $(moreEl)[0],
 				elClone = el.cloneNode(true);
 			el.parentNode.replaceChild(elClone, el);
+			$(elClone).attr("href", "javascript:;");
 			$(elClone).on('click', displayTable(id, 1, moreObject, memberId));
+		});
+	}
+
+	function initGlobalScrollListener() {
+		document.addEventListener("scroll", function scroll(event) {
+			// temporarily remove scroll listener to prevent multiple events
+			event.currentTarget.removeEventListener(event.type, scroll);
+
+			initModernList();
+
+			setTimeout( function() {
+				initGlobalScrollListener();
+			}, 1000);
 		});
 	}
 
@@ -90,52 +110,42 @@
 		}
 
 		var dataMap = store.get(animeid + 'MAP');
-		var dataArray = store.get(animeid + 'Array');
 
 		$.get('/' + mal.type[0] + '/' + animeid, function(data) {
 			$(data).find('#content > table > tbody > tr > td.borderClass > div > div:nth-child(n) > span').each(function() {
 				var item = this.textContent.replace(/:/g,"");
 				if (isNaN(item) && (this.nextElementSibling === null || item == "Ranked")) {
-					dataMap.push(item);
-					dataArray.push(this.nextSibling.textContent);
+					dataMap[item] = this.nextSibling.textContent;
 				} else if (isNaN(item) && item.indexOf(',') == -1) {
-					dataMap.push(item);
 					var information = this.parentNode.children[1].outerHTML;
 					for(var i = 2; i < this.parentNode.children.length && item != "Score"; i++) {
 						information += ", " + this.parentNode.children[i].outerHTML;
 					}
-					dataArray.push(information);
+					dataMap[item] = information;
 				}
 			});
 			$(data).find('#content > table > tbody > tr > td:nth-child(2) > div > table > tbody > tr:nth-child(1) > td > span').each(function() {
-				dataMap.push('Synopsis');
-				dataArray.push(this.innerHTML);
+				dataMap.Synopsis = this.innerHTML;
 			});
 			$(data).find('#content > table > tbody > tr > td:nth-child(2) > div > table > tbody > tr:nth-child(2) > td > table.anime_detail_related_anime > tbody > tr:nth-child(n) > td.ar.fw-n.borderClass').each(function() {
 				var related = this.textContent.replace(/:/g,"");
 				if (related == "Parent story") {
-					dataMap.push('Parent');
-					dataArray.push(this.nextElementSibling.innerHTML);
+					dataMap.Parent = this.nextElementSibling.innerHTML;
 				} else if (related == "Side story" && this.nextElementSibling.children.length <= 3) {
-					dataMap.push('Side');
-					dataArray.push(this.nextElementSibling.innerHTML);
+					dataMap.Side = this.nextElementSibling.innerHTML;
 				} else if (related == "Prequel") {
-					dataMap.push('Prequel');
-					dataArray.push(this.nextElementSibling.innerHTML);
+					dataMap.Prequel = this.nextElementSibling.innerHTML;
 				} else if (related == "Sequel") {
-					dataMap.push('Sequel');
-					dataArray.push(this.nextElementSibling.innerHTML);
+					dataMap.Sequel = this.nextElementSibling.innerHTML;
 				} else if (related == "Alternative version") {
-					dataMap.push('Alternative');
-					dataArray.push(this.nextElementSibling.innerHTML);
+					dataMap.Alternative = this.nextElementSibling.innerHTML;
 				}
 			});
 
 			// score is a little bit different to get with manga -.-
 			if (mal.type[0] == "manga") {
 				$(data).find('#content > table > tbody > tr > td.borderClass > div > div:nth-child(n) > span > span:nth-child(2)').each(function() {
-					dataMap.push('Score');
-					dataArray.push(this.innerHTML);
+					dataMap.Score = this.innerHTML;
 				});
 			}
 
@@ -158,7 +168,7 @@
 
 			image.firstChild.onload = function() {
 				var synopsisHeight = this.height - related.offsetHeight - information.offsetHeight;
-				synopsis.setAttribute('style', 'max-height:' + synopsisHeight + 'px; overflow:auto; overflow-y: auto;');
+				synopsis.setAttribute('style', 'max-height:' + synopsisHeight + 'px; min-height:100px; overflow:auto; overflow-y: auto;');
 			};
 		});
 	}
@@ -175,18 +185,15 @@
 
 	function getDataFromOriginalMore(preData, animeid) {
 		var dataMap = store.get(animeid + 'MAP');
-		var dataArray = store.get(animeid + 'Array');
-		
+
 		// Time Spent Watching
 		var start = preData.indexOf('Time Spent Watching');
 		var end = preData.indexOf('<small>(');
-		dataMap.push('TimeSpentWatching');
-		dataArray.push(preData.substring(start + 21, end));
+		dataMap.TimeSpentWatching = preData.substring(start + 21, end);
 		start = end;
 		end = preData.indexOf('per episode');
 		var episodeTime = preData.substring(start + 8, end);
-		dataMap.push('EpisodeTime');
-		dataArray.push(episodeTime);
+		dataMap.EpisodeTime = episodeTime;
 	}
 
 	//--------------------------------//
@@ -195,7 +202,6 @@
 
 	function displayTable(animeid, tdtype, moreObject, memberId) {
 		return function () {
-
 			if (moreObject.is(":visible")) {
 				moreObject.hide();
 			} else if (moreObject.hasClass("extraLoaded")) {
@@ -210,10 +216,9 @@
 					moreObject.addClass("extraLoaded");
 
 					var table = $(moreObject).find('.td' + tdtype + '.borderRBL')[0];
-					var dataMap = [];
-					var dataArray = [];
+					var dataMap = {};
 					store.set(animeid + 'MAP', dataMap);
-					store.set(animeid + 'Array', dataArray);
+					store.set(animeid + 'Original', table.innerHTML);
 					if (table !== null && mal.type[0] != "manga") {
 						getDataFromOriginalMore(table.innerHTML, animeid);
 						table.innerHTML = "Fetching data";
@@ -229,12 +234,7 @@
 
 	function getDataValue(animeid, string) {
 		var dataMap = store.get(animeid + 'MAP');
-		var dataArray = store.get(animeid + 'Array');
-
-		var elementPos = dataMap.map(function(x) {return x; }).indexOf(string);
-		if (dataArray[elementPos] === undefined)
-			return "Unavailable";
-		return dataArray[elementPos];
+		return dataMap[string] || "Unavailable";
 	}
 
 	function getXmlEntry(animeid, string) {
@@ -268,9 +268,6 @@
 	}
 
 	function displayAnimeInfo(animeid) {
-		var dataMap = store.get(animeid + 'MAP');
-		var dataArray = store.get(animeid + 'Array');
-
 		var episodes = getDataValue(animeid, 'Episodes');
 		var chapters = getDataValue(animeid, 'Chapters');
 		var volumes = getDataValue(animeid, 'Volumes');
@@ -282,6 +279,8 @@
 		var rank = getDataValue(animeid, 'Ranked').replace("#","");
 		var popularity = getDataValue(animeid, 'Popularity').replace("#","");
 		var studio = getDataValue(animeid, 'Studios');
+		var source = getDataValue(animeid, 'Source');
+		var premiered = getDataValue(animeid, 'Premiered');
 
 		var parent = getDataValue(animeid, 'Parent');
 		var side = getDataValue(animeid, 'Side');
@@ -321,9 +320,6 @@
 			}
 		}
 
-		// console.log(dataMap);
-		// console.log(dataArray);
-
 		var strVar="";
 		strVar += "<body>";
 		strVar += "<table>";
@@ -333,9 +329,9 @@
 		strVar += (status.indexOf("Currently Airing") > -1) ? ("<b>" + "Broadcast: " + "<\/b>" + broadcast + "<br>") : ("");
 		strVar += (mal.type[0] == "anime") ? ("<b>" + "Episodes: " + "<\/b>" + episodes + "<br>") : ("<b>" + "Volumes: " + "<\/b>" + volumes + "<br>" + "<b>" + "Chapters: " + "<\/b>" + chapters + "<br>");
 		strVar += "    <b>" + "Score: " + "<\/b>" + score + "<br>";
-		strVar += "    <b>" + "Rank: " + "<\/b>" + rank + "<br>";
-		strVar += "    <b>" + "Popularity: " + "<\/b>" + popularity + "<br>";
+		strVar += (mal.type[0] == "anime") ? ("<b>" + "Source: " + "<\/b>" + source + "<br>") : ("<b>" + "Rank: " + "<\/b>" + rank + "<br>");
 		strVar += (studio.indexOf("add some") == -1 && mal.type[0] != "manga") ? ("<b>" + "Studio: " + "<\/b>" + studio + "<br>") : ("");
+		strVar += (mal.type[0] == "anime") ? (premiered != "Unavailable" ? ("<b>" + "Premiered: " + "<\/b>" + premiered + "<br>") : ("")) : ("<b>" + "Popularity: " + "<\/b>" + popularity + "<br>");
 		strVar += (mal.type[0] == "anime") ? ("<b>" + "Aired: " + "<\/b>" + startDate + endDate + "<br>") : ("<b>" + "Published: " + "<\/b>" + startDate + endDate + "<br>");
 		strVar += "    <\/td>";
 		strVar += "    <td class=\"genres\" valign=\"top\" align=\"right\" width=\"65%\">" + genres + "<\/td>";
